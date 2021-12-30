@@ -52,5 +52,7 @@ public class Device {
     public void setCost(float cost) {
         this.cost = cost;
     }
+
+    public boolean GivePermission(){ return true; }
 }
 

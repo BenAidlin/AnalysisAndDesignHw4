@@ -1,4 +1,3 @@
-import java.time.LocalDateTime;
 import java.util.*;
 
 public class Main {
@@ -18,11 +17,11 @@ class System {
     // Methods
     public static void init() {
         Device mambaRide = new ExtremeDevice("Mamba Ride",
-                12,-1, (float) 1.4, 0);
+                12,-1, (float) 1.4, 2);
         Device giantWheel = new Device("Giant Wheel",
                 -1, -1, -1, 0);
         Device carrousel = new Device("Carrousel",
-                8, -1, -1, 0);
+                8, -1, -1, 20000);
         eParkDevices.add(mambaRide); eParkDevices.add(giantWheel); eParkDevices.add(carrousel);
         systemObjects.add(mambaRide); systemObjects.add(giantWheel); systemObjects.add(carrousel);
     }
@@ -67,13 +66,77 @@ class System {
     }
 
     private static void ExitPark() {
+
     }
 
     private static void RemoveRide(AppUser appUser) {
+        while(true) {
+            java.lang.System.out.println("Which device would you like to remove?");
+            java.lang.System.out.println("please choose the device by inserting the device number, or E to exit");
+            for (int i = 0; i < appUser.getETicket().getEntryList().size(); i++)
+                java.lang.System.out.println(i + ") " + appUser.getETicket().getEntryList().get(i).getDevice().getName());
+            Scanner input = new Scanner(java.lang.System.in);
+            String choice = input.next();
+            if(choice.equals("E"))break;
+            try{
+                int iChoice = Integer.parseInt(choice);
+                Entry chosenEntry = appUser.getETicket().getEntryList().get(iChoice);
+                Device chosenDevice = appUser.getETicket().getEntryList().get(iChoice).getDevice();
+                java.lang.System.out.println("please choose the amount of entries you want to remove");
+                int iEntries = Integer.parseInt(input.next());
+                if(iEntries > chosenEntry.getEntriesLeft()) java.lang.System.out.println("You don't have that much..");
+                else if(iEntries < 0) java.lang.System.out.println("Please.. be serious..");
+                else {
+                    Entry toRem = appUser.getETicket().RemoveEntries(chosenDevice, iEntries);
+                    appUser.getGuardian().getBillingAccount().setLimitLeft(appUser.getGuardian().getBillingAccount().getLimitLeft()+chosenDevice.getCost()*iEntries);
+                    if(toRem!=null) systemObjects.remove(toRem);
+                    java.lang.System.out.println("Successfully removed!");
+
+                }
+            }
+            catch (Exception e){
+                java.lang.System.out.println("Invalid input, try again"); continue;
+            }
+        }
     }
 
     private static void AddRide(AppUser appUser) {
-        java.lang.System.out.println("");
+        Visitor visitor = appUser.getVisitor();
+        List<Device> allowedDevices = new ArrayList<>();
+        for (Device device: eParkDevices) {
+            if(device.getMinAge()<visitor.getAge() && device.getMinHeight()<visitor.getHeight() && device.getMinWeight()< visitor.getWeight())
+                allowedDevices.add(device);
+        }
+
+        while(true) {
+            java.lang.System.out.println("Allowed devices for your child:");
+            for (int i = 0; i < allowedDevices.size(); i++)
+                java.lang.System.out.println(i + ") " + allowedDevices.get(i).getName() + ", costs: " + allowedDevices.get(i).getCost());
+            java.lang.System.out.println("please choose the device by inserting the device number, or E to exit");
+            Scanner input = new Scanner(java.lang.System.in);
+            String choice = input.next();
+            if(choice.equals("E")) break;
+            try{
+                int iChoice = Integer.parseInt(choice);
+                Device chosenDevice = allowedDevices.get(iChoice);
+                if(!chosenDevice.GivePermission()) continue;
+                java.lang.System.out.println("How many entries would you like to add?");
+                String entries = input.next();
+                int iEntries = Integer.parseInt(entries);
+                if(chosenDevice.getCost()*iEntries>appUser.getGuardian().getBillingAccount().getLimitLeft()){
+                    java.lang.System.out.println("Too much for your limit...");
+                    continue;
+                }
+                appUser.getGuardian().getBillingAccount().setLimitLeft(appUser.getGuardian().getBillingAccount().getLimitLeft()-chosenDevice.getCost()*iEntries);
+                Entry entryIfAdded = appUser.getETicket().AddEntries(chosenDevice, iEntries);
+                if(entryIfAdded!=null) systemObjects.add(entryIfAdded);
+                java.lang.System.out.println("Successfully added! Have fun!");
+            }
+            catch (Exception e){
+                java.lang.System.out.println("Invalid input... Try again"); continue;
+            }
+        }
+
     }
 
     private static void ManageTicket() {
