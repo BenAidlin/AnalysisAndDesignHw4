@@ -13,7 +13,11 @@ class System {
     public static boolean exit = false;
     public static List<Device> eParkDevices = new ArrayList<>();
     public static List<Guardian> guardianList = new ArrayList<>();
+    public static Scanner input = new Scanner(java.lang.System.in);
 
+    /**
+     * Initialize the park with 3 devices "Mamba Ride", "Giant Wheel", "Carrousel"
+     */
     // Methods
     public static void init() {
         Device mambaRide = new ExtremeDevice("Mamba Ride",
@@ -25,29 +29,46 @@ class System {
         eParkDevices.add(mambaRide); eParkDevices.add(giantWheel); eParkDevices.add(carrousel);
         systemObjects.add(mambaRide); systemObjects.add(giantWheel); systemObjects.add(carrousel);
     }
+
+    /**
+     * Interact with user as long as he doesn't exit
+     */
     public static void Ui(){
         while (!System.exit) {
-            java.lang.System.out.println("Welcome to ePark!\n" +
+            String input = getInput("Welcome to ePark!\n" +
                     "1.\tRegister child\n" +
                     "2.\tManage ticket (Add/Remove ride)\n" +
                     "3.\tExit park\n" +
-                    "4.\tExit");
-            System.handleInput(System.getInput());
+                    "4.\tExit", new String[]{"1","2","3","4"});
+            if(input!=null) // valid input
+                System.handleInput(Integer.parseInt(input));
         }
     }
-    public static int getInput(){
-        Scanner input = new Scanner(java.lang.System.in);
-        int userChoice = -1;
-        try {
-            userChoice = input.nextInt();
+
+    /**
+     * @param messageBeforeInput string printed before inputting. Null meaning don't print anything.
+     * @param mustBe string array containing all valid inputs user should insert. Null meaning no restrains on user input.
+     * @return a string the user inputted. If the string was invalid returns null.
+     */
+    public static String getInput(String messageBeforeInput, String[] mustBe){
+        if(messageBeforeInput!=null) java.lang.System.out.println(messageBeforeInput);
+        String in = input.next();
+        if(mustBe==null) return in;
+        String mustBeAsString = "";
+        for (String str:mustBe) {
+            if(str.equals(in)) return in;
+            mustBeAsString += ", " +str;
         }
-        catch (InputMismatchException e){
-            java.lang.System.out.println("Please enter a number");
-        }
-        return userChoice;
+        java.lang.System.out.println("Invalid input, input must be in " + mustBeAsString.substring(1) +"\nYou inserted " + in);
+        return null;
     }
+
+    /**
+     * @param userChoice int representing the user choice of action.
+     * This method only proceeds to call the relevant method according to user's choice.
+     */
     public static void handleInput(int userChoice){
-        System.PrintObjects(); // TODO: Remove this!!!
+        //System.PrintObjects(); // TODO: Remove this!!!
 
         switch(userChoice){
             case 1:
@@ -65,25 +86,79 @@ class System {
         }
     }
 
+    /**
+     * @param guardianId
+     * @return a registered guardian that holds that ID, or null if such guardian doesn't exist
+     */
+    private static Guardian findGuardian(String guardianId){
+        Guardian guardian = null;
+        for (Guardian g:
+                guardianList) {
+            try {
+                if (g.getID() == Integer.parseInt(guardianId)) guardian = g;
+            }
+            catch (Exception e) {java.lang.System.out.println("Guardian's ID must be a number"); }
+        }
+        return guardian;
+    }
+
+    /**
+     * request appUser to remove and remove it. If the appUser is the guardians only one, the guardian will be removed as well.
+     */
     private static void ExitPark() {
+
+        Guardian guardian = System.findGuardian(System.getInput("Please insert guardian ID", null));
+        if(guardian == null){
+            java.lang.System.out.println("No such guardian in the system."); return;
+        }
+        String appUserToDelete = System.getInput("Please insert appUser to remove", null);
+        String sure = System.getInput("Are you sure? App user will be removed from the system..." +
+                "\n Press Y if you are sure, and N to cancel.", new String[]{"Y", "N"});
+        if(sure==null) return;
+        if(sure.equals("N")){
+            java.lang.System.out.println("We knew you wouldn't leave!"); return;
+        }
+        // remove appusers, entries, eticket, visitor
+        for (AppUser au: guardian.getAppUsers()) {
+            if(String.valueOf(au.getID()).equals(appUserToDelete)) {
+                for (Entry e : au.getETicket().getEntryList()) {
+                    systemObjects.remove(e);
+                }
+                systemObjects.remove(au.getETicket());
+                systemObjects.remove(au.getVisitor());
+                systemObjects.remove(au);
+                guardian.getAppUsers().remove(au);
+                if(guardian.getAppUsers().size()==0) {
+                    java.lang.System.out.println("Last app user.. removing guardian as well..");
+                    systemObjects.remove(guardian.getBillingAccount());
+                    systemObjects.remove(guardian);
+                    guardianList.remove(guardian);
+                }
+                java.lang.System.out.println("Successfully removed.. your left balance is " + guardian.getBillingAccount().getLimitLeft() +
+                        "\n See ya next time!");
+                return;
+            }
+        }
+        java.lang.System.out.println("No such App user.. try again");
 
     }
 
+    /**
+     * @param appUser app user to remove rides from.
+     */
     private static void RemoveRide(AppUser appUser) {
         while(true) {
             java.lang.System.out.println("Which device would you like to remove?");
             java.lang.System.out.println("please choose the device by inserting the device number, or E to exit");
             for (int i = 0; i < appUser.getETicket().getEntryList().size(); i++)
                 java.lang.System.out.println(i + ") " + appUser.getETicket().getEntryList().get(i).getDevice().getName());
-            Scanner input = new Scanner(java.lang.System.in);
-            String choice = input.next();
+            String choice = getInput(null,null);
             if(choice.equals("E"))break;
             try{
                 int iChoice = Integer.parseInt(choice);
                 Entry chosenEntry = appUser.getETicket().getEntryList().get(iChoice);
                 Device chosenDevice = appUser.getETicket().getEntryList().get(iChoice).getDevice();
-                java.lang.System.out.println("please choose the amount of entries you want to remove");
-                int iEntries = Integer.parseInt(input.next());
+                int iEntries = Integer.parseInt(System.getInput("please choose the amount of entries you want to remove",null));
                 if(iEntries > chosenEntry.getEntriesLeft()) java.lang.System.out.println("You don't have that much..");
                 else if(iEntries < 0) java.lang.System.out.println("Please.. be serious..");
                 else {
@@ -100,6 +175,9 @@ class System {
         }
     }
 
+    /**
+     * @param appUser to add rides to.
+     */
     private static void AddRide(AppUser appUser) {
         Visitor visitor = appUser.getVisitor();
         List<Device> allowedDevices = new ArrayList<>();
@@ -107,22 +185,17 @@ class System {
             if(device.getMinAge()<visitor.getAge() && device.getMinHeight()<visitor.getHeight() && device.getMinWeight()< visitor.getWeight())
                 allowedDevices.add(device);
         }
-
         while(true) {
             java.lang.System.out.println("Allowed devices for your child:");
             for (int i = 0; i < allowedDevices.size(); i++)
                 java.lang.System.out.println(i + ") " + allowedDevices.get(i).getName() + ", costs: " + allowedDevices.get(i).getCost());
-            java.lang.System.out.println("please choose the device by inserting the device number, or E to exit");
-            Scanner input = new Scanner(java.lang.System.in);
-            String choice = input.next();
+            String choice = System.getInput("please choose the device by inserting the device number, or E to exit",null);
             if(choice.equals("E")) break;
             try{
                 int iChoice = Integer.parseInt(choice);
                 Device chosenDevice = allowedDevices.get(iChoice);
-                if(!chosenDevice.GivePermission()) continue;
-                java.lang.System.out.println("How many entries would you like to add?");
-                String entries = input.next();
-                int iEntries = Integer.parseInt(entries);
+                if(!chosenDevice.GivePermission()) {java.lang.System.out.println("Not allowed");continue;};
+                int iEntries = Integer.parseInt(System.getInput("How many entries would you like to add?", null));
                 if(chosenDevice.getCost()*iEntries>appUser.getGuardian().getBillingAccount().getLimitLeft()){
                     java.lang.System.out.println("Too much for your limit...");
                     continue;
@@ -139,27 +212,23 @@ class System {
 
     }
 
+    /**
+     * either add or remove entries from an appUser selected by the guardian, after he was verified.
+     */
     private static void ManageTicket() {
-        java.lang.System.out.println("Please insert guardian ID");
-        Scanner input = new Scanner(java.lang.System.in);
-        String guardianId = input.next();
-        Guardian guardian = null;
-        for (Guardian g:
-                guardianList) {
-            if(g.getID() == Integer.parseInt(guardianId)) guardian = g;
-        }
+        Guardian guardian = System.findGuardian(System.getInput("Please insert guardian ID", null));
         if(guardian == null){
             java.lang.System.out.println("No such guardian in the system. Please register through option 1");
             return;
         }
-        java.lang.System.out.println("Please insert your app user id(you got it on registry)");
-        String userID = input.next();
-        java.lang.System.out.println("Please insert your password(you selected on registry)");
-        String password = input.next();
+        int userID = -1;
+        try{userID =Integer.parseInt(System.getInput("Please insert your app user id(you got it on registry)", null));}
+        catch (Exception e) {java.lang.System.out.println("Invalid username"); return;}
+        String password = System.getInput("Please insert your password(you selected on registry)", null);
         boolean found = false;
         for (AppUser appUser:
              guardian.getAppUsers()) {
-            if(appUser.getID() == Integer.parseInt(userID) && appUser.getPassword().equals(password)){
+            if(appUser.getID() == userID && appUser.getPassword().equals(password)){
                 found = true;
                 java.lang.System.out.println("Your app user's e-Ticket:");
                 appUser.getETicket().DisplayEticket();
@@ -173,14 +242,15 @@ class System {
         }
     }
 
+    /**
+     * insert a new visitor in the system through the guardian.
+     */
     private static void RegisterChild() {
         Guardian activeGuardian = findGuardianOrCreate();
+        if(activeGuardian==null) return;
         java.lang.System.out.println("Please fill the form: \n");
-        java.lang.System.out.println("Choose password:");
-        Scanner input = new Scanner(java.lang.System.in);
-        String password = input.next();
-        java.lang.System.out.println("Enter visitor age:");
-        String age = input.next();
+        String password = System.getInput("Choose password:", null);
+        String age = System.getInput("Enter visitor age:", null);
 
         Visitor visitor = new Visitor(Integer.parseInt(age),
                 Guardian.measureChildWeight(), Guardian.measureChildHeight(), activeGuardian);
@@ -188,35 +258,35 @@ class System {
         ETicket eTicket = new ETicket("Park", "2020/12/12", false);
         AppUser appUser = new AppUser(password, activeGuardian,
                 eTicket, visitor);
-        java.lang.System.out.println("Your app user id is "+appUser.getID());
+        java.lang.System.out.println("Important!!! Your app user id is "+appUser.getID());
         systemObjects.add(visitor);systemObjects.add(appUser);systemObjects.add(eTicket);
         activeGuardian.getAppUsers().add(appUser);
     }
+
+    /**
+     * @return an existing guardian if he is in the system, or creates a new one and returns it.
+     */
     private static Guardian findGuardianOrCreate(){
-        java.lang.System.out.println("Please insert guardian ID");
-        Scanner input = new Scanner(java.lang.System.in);
-        String guardianId = input.next();
-
-        for (Guardian g:
-                guardianList) {
-            if(g.getID() == Integer.parseInt(guardianId)) return g;
-        }
-
+        String guardianId = System.getInput("Please insert guardian ID",null);
+        Guardian guardian =System.findGuardian(guardianId);
+        if(guardian!=null) return guardian;
         return CreateGuardian(guardianId);
     }
+
+    /**
+     * @param guardianId an id the created guardian will have
+     * @return the created guardian object.
+     */
     private static Guardian CreateGuardian(String guardianId){
-        java.lang.System.out.println("Welcome!\n" +
-                "Please insert billing account number");
-        Scanner input = new Scanner(java.lang.System.in);
-        String creditCardNumber = input.next();
-        java.lang.System.out.println("Please insert expiration date");
-        String expirationDate = input.next();
-        java.lang.System.out.println("Please insert billing password");
-        String billingPassword = input.next();
-        java.lang.System.out.println("Please insert billing limit");
-        int limit = Integer.parseInt(input.next());
+        String creditCardNumber = System.getInput("Welcome!\n" +
+                "Please insert billing account number", null);
+        String expirationDate = System.getInput("Please insert expiration date",null);
+        String billingPassword = System.getInput("Please insert billing password", null);
+        int limit = -1;
+        try{limit = Integer.parseInt(System.getInput("Please insert billing limit", null));}
+        catch (Exception e){java.lang.System.out.println("Invalid input.. Please try again"); return null;}
         java.lang.System.out.println("Waiting for credit card approval");
-        if (!CreditCardCompany.getApproval())java.lang.System.out.println("Waiting for credit card approval");;
+        if (!CreditCardCompany.getApproval())java.lang.System.out.println("Not approved, sorry...");;
         BillingAccount billingAccount = new BillingAccount(Integer.parseInt(creditCardNumber), expirationDate, billingPassword, limit);
         Guardian guardian = new Guardian(Integer.parseInt(guardianId),
                 billingAccount);
