@@ -4,10 +4,10 @@ public class MeasureMachine {
     public static Random random = new Random();
 
     public static float getWeight() {
-        return random.nextFloat(40, 60);
+        return 40 + random.nextFloat()*(60-40);//random.nextFloat(40, 60);
     }
 
     public static float getHeight() {
-        return random.nextFloat((float) 1.4, (float) 1.6);
+        return (float)1.4 + random.nextFloat()*((float)1.6-(float)1.4);
     }
 }
